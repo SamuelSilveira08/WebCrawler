@@ -23,9 +23,7 @@ public class Crawler {
 			String reviewsUrl = url + "reviews?sort=userRating&dir=desc&ratingFilter=0";
 			Map<String, String> results = getMovieData(url, reviewsUrl, currentRankingPosition);
 			results.forEach((key, value) -> System.out.println(key + ": " + value));
-			System.out.println("-----------------------------------------------------"
-					+ "---------------------------------------------------------"
-					+ "-----------------------------------------------");
+			System.out.println("************");
 			currentRankingPosition -= 1;
 		}
 	}
