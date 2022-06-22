@@ -14,19 +14,83 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class Crawler {
+	
+	// Declaring and initializing some important static variables
+
+	private static volatile int currentPritingQueueNumber = 1;
+	private static int thisThreadPositionInPrintingQueue = 1;
+	private static int currentRankingPosition = 10;
+
+	/**
+	 * 
+	 * Main method of the application. Here I create a Thread for each for loop.
+	 * They will be responsible for getting the movies data asynchronously. Lambda
+	 * expression was used in this method to implement the Runnable's interface
+	 * {@code Runnable#run()} method. Inside it, after the crawl is made in the
+	 * given url's page, the method {@code Crawler#showRanking(Map, int)} is called
+	 * with the results and a integer parameter, which makes the application print
+	 * the results in the order I want (from best note to worst). Without it, the
+	 * threads are just gonna print the results as soon as they are ready and it
+	 * will be out of order. Is also important to explain that, inside the
+	 * {@code Runnable#run()} implementation, the reviewsUrl variable is adding the
+	 * filters to the reviews url so the crawler can get the best reviews data
+	 * easier.
+	 * 
+	 * @author Samuel Silveira
+	 */
 
 	public static void main(String[] args) {
 		List<String> movieUrls = gatherBottomMoviesUrls();
-		int currentRankingPosition = 10;
 
 		for (String url : movieUrls) {
-			String reviewsUrl = url + "reviews?sort=userRating&dir=desc&ratingFilter=0";
-			Map<String, String> results = getMovieData(url, reviewsUrl, currentRankingPosition);
-			results.forEach((key, value) -> System.out.println(key + ": " + value));
-			System.out.println("************");
+			final int tempThisThreadPositionInQueue = thisThreadPositionInPrintingQueue;
+			final int tempCurrentRankingPosition = currentRankingPosition;
+			Runnable task = () -> {
+				String reviewsUrl = url + "reviews?sort=userRating&dir=desc&ratingFilter=0";
+				Map<String, String> results = getMovieData(url, reviewsUrl, tempCurrentRankingPosition);
+				showRanking(results, tempThisThreadPositionInQueue);
+			};
 			currentRankingPosition -= 1;
+			Thread thread = new Thread(task);
+			thread.start();
+			thisThreadPositionInPrintingQueue++;
 		}
 	}
+
+	/**
+	 * Method responsible for printing the results in the right order. The while
+	 * inside it just keeps checking whether this thread's results turn to be print
+	 * has come. When the results are printed, the current thread adds 1 to the
+	 * {@code Crawler#currentQueueNumber} variable so the others threads can print
+	 * their results as well.
+	 * 
+	 * @param results
+	 * @param positionInQueue
+	 * 
+	 * @author Samuel Silveira
+	 */
+
+	private static void showRanking(Map<String, String> results, int positionInQueue) {
+		while (positionInQueue > currentPritingQueueNumber) {
+			continue;
+		}
+		results.forEach((key, value) -> System.out.println(key + ": " + value));
+		System.out.println("************");
+		currentPritingQueueNumber += 1;
+	}
+
+	/**
+	 * The method {@code Crawler#gatherBottomMoviesUrls()} the top 10 worst movies'
+	 * url and format it, removing some query parameters from the url so the
+	 * application can add the query parameters to filter the reviews easier.
+	 * 
+	 * Also, before returning the list of urls, the code below reverses its order,
+	 * so it can get the movies from the best note to the worst.
+	 * 
+	 * @return a list with the 10 worst movies urls
+	 * 
+	 * @author Samuel Silveira
+	 */
 
 	private static List<String> gatherBottomMoviesUrls() {
 		List<String> moviesUrls = new ArrayList<>();
@@ -49,6 +113,27 @@ public class Crawler {
 		}
 		return null;
 	}
+
+	/**
+	 * The {@code Crawler#getMovieData(String, String, int)} method is responsible
+	 * for retrieving all data wanted from the movies given. It connects to the urls
+	 * needed and using css classes, html tags etc. it retrieves the movies' data.
+	 * 
+	 * For this program, I've used the rating of the 10 worst movies list page, as
+	 * they were different from the movie page itself. To do this, the method
+	 * receives a integer parameter representing the rankingPosition of the movie
+	 * that's been crawled so the code can know what of the "strong" tags (that
+	 * holds the rating of the movies) it is going to get. It works because JSoup
+	 * orders the list of Elements accordingly to the order they are found in the
+	 * html file.
+	 * 
+	 * @param url
+	 * @param reviewsUrl
+	 * @param rankingPosition
+	 * @return a map with key and value of the movies' data, like (Rating: 2.1, Title: Disaster Movie).
+	 * 
+	 * @author Samuel Silveira
+	 */
 
 	private static Map<String, String> getMovieData(String url, String reviewsUrl, int rankingPosition) {
 
