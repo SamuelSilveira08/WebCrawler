@@ -14,7 +14,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class Crawler {
-	
+
 	// Declaring and initializing some important static variables
 
 	private static volatile int currentPritingQueueNumber = 1;
@@ -47,6 +47,7 @@ public class Crawler {
 			final int tempCurrentRankingPosition = currentRankingPosition;
 			Runnable task = () -> {
 				String reviewsUrl = url + "reviews?sort=userRating&dir=desc&ratingFilter=0";
+				// TODO implement rating verification if >= 5
 				Map<String, String> results = getMovieData(url, reviewsUrl, tempCurrentRankingPosition);
 				showRanking(results, tempThisThreadPositionInQueue);
 			};
@@ -130,7 +131,8 @@ public class Crawler {
 	 * @param url
 	 * @param reviewsUrl
 	 * @param rankingPosition
-	 * @return a map with key and value of the movies' data, like (Rating: 2.1, Title: Disaster Movie).
+	 * @return a map with key and value of the movies' data, like (Rating: 2.1,
+	 *         Title: Disaster Movie).
 	 * 
 	 * @author Samuel Silveira
 	 */
@@ -173,13 +175,13 @@ public class Crawler {
 			elements = doc.getElementsByClass("lister-item-content");
 
 			int reviewsCounter = 0;
-
+			
 			for (Element element : elements) {
-
+				
 				if (reviewsCounter == 3) {
 					break;
 				}
-
+				
 				String movieRatingByReviewer = element.getElementsByClass("rating-other-user-rating").select("span")
 						.first().text();
 				String reviewerName = element.getElementsByClass("display-name-link").text();
@@ -187,7 +189,13 @@ public class Crawler {
 				String reviewContent = element.getElementsByClass("text").text();
 				reviews.add("On %s, %s rated the movie as %s and commented: %s".formatted(reviewDate, reviewerName,
 						movieRatingByReviewer, reviewContent));
-				reviewsCounter += 1;
+				
+				double integerMovieRatingByReviewer = Double.parseDouble(movieRatingByReviewer.substring(0, movieRatingByReviewer.indexOf('/')));
+				
+				if(integerMovieRatingByReviewer >= 5) {
+					reviewsCounter++;
+				}
+				
 			}
 
 			movieData.put("Title", title);
